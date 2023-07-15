@@ -1,3 +1,4 @@
+#import necessary libraries
 import sys
 import pandas as pd
 from sqlalchemy import create_engine
@@ -17,6 +18,17 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.metrics import classification_report
 
 def load_data(database_filepath):
+    """
+    Loads data from the database
+
+    Parameters:
+        database_filepath: file path of the SQLite database
+
+    Returns:
+        X: Features
+        Y: Target
+        columns: category names
+    """
     engine = create_engine(f'sqlite:///{database_filepath}')
     df = pd.read_sql_table('project_2', con=engine) 
     X = df['message']
@@ -26,38 +38,79 @@ def load_data(database_filepath):
 
 
 def tokenize(text):
+    """
+    Tokenize and lemmatize the given text
+
+    Parameters:
+        text: Text to tokenize and lemmatize
+        
+    Returns:
+        clean_tokens: tokens created after the operations
+    """
+    #tokenize text
     tokens = word_tokenize(text)
+    
+    #initiate the lemmatizer
     lemmatizer = WordNetLemmatizer()
+
+    #iterate through each token
     clean_tokens = []
     for tok in tokens:
+        #lemmatize, normalize, and remove leading/trailing white space
         clean_tok = lemmatizer.lemmatize(tok).lower().strip()
         clean_tokens.append(clean_tok)
     return clean_tokens
 
 
 def build_model():
+    """
+    Creates a pipeline and implements Grid Search to choose the best parameters
+
+    Returns:
+        cv: multi output classifier that was built with GridSearch
+    """
+    #build the pipeline
     pipeline = Pipeline([
     ('vect', CountVectorizer()),
     ('tfidf', TfidfTransformer()),
     ('clf', MultiOutputClassifier(RandomForestClassifier()))       
     ])
-    
+
+    #choose the parameter to use in the grid search
     parameters = {'clf__estimator__n_estimators':[10,50]}
 
+    #apply grid search to pipeline
     cv = GridSearchCV(pipeline, param_grid=parameters)
     return cv
 
 def evaluate_model(model, X_test, Y_test, category_names):
+    """
+    Evaluates the performance of the model and prints the precision, recall, and f1score for each category. 
+    
+    Parameters:
+    model: classifier
+    X_test: test dataset
+    Y_test: labels for test data in X_test
+    
+    Returns:
+    Classification report for each category
+    """
     y_pred = model.predict(X_test)
     for index, column in enumerate(Y_test):
         print(column, classification_report(Y_test[column], y_pred[:, index]))
 
 
 def save_model(model, model_filepath):
+    """
+    Exports the final model into a pickle file.
+    """
     pickle.dump(model, open(model_filepath, 'wb'))
 
 
 def main():
+    """
+    Performs the operations defined in this script
+    """
     if len(sys.argv) == 3:
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
