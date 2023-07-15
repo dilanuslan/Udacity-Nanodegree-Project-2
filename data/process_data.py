@@ -51,6 +51,8 @@ def clean_data(df):
         # convert column from string to numeric
         categories[column] = categories[column].astype(int)
         
+    categories['related'] = categories['related'].replace(to_replace=2, value=1)  
+    
     # drop the original categories column from `df`
     df = df.drop(['categories'], axis=1)
 
@@ -68,7 +70,7 @@ def save_data(df, database_filename):
     Stores the data frame in a SQLite database
     """
     engine = create_engine(f'sqlite:///{database_filename}')
-    df.to_sql('project_2', engine, index=False) 
+    df.to_sql('project_2', engine, index=False, if_exists='replace') 
 
 
 def main():
