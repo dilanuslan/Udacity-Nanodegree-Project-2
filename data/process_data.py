@@ -1,38 +1,80 @@
+#import necessary libraries
 import sys
 import pandas as pd
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    """
+    Loads two input files and merges them
+
+    Parameters:
+        messages_filepath: file path to disaster_messages.csv
+        categories_filepath: file path to disaster_categories.csv
+
+    Returns:
+        df: data frame that was created by merging two input files on their common column 'id'
+    """
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
     df = messages.merge(categories, how='left', on='id')
     return df
 
 def clean_data(df):
+    """
+    Cleans a given data frame
+
+    Parameters:
+        df: A data frame to do the cleaning operations
+
+    Returns: 
+        df: New data frame after the cleaning operations
+    """
+    # create a dataframe of the 36 individual category columns
     categories = df['categories'].str.split(";", expand=True)
+    
+    # select the first row of the categories dataframe
     row = categories.head(1)
+
+    # use this row to extract a list of new column names for categories.
+    # one way is to apply a lambda function that takes everything 
+    # up to the second to last character of each string with slicing
     category_colnames = row.apply(lambda x: x.str[:-2].iloc[0])
+
+    # rename the columns of `categories`
     categories.columns = category_colnames
+
+    
     for column in categories:
         # set each value to be the last character of the string
         categories[column] = categories[column].astype(str).str[-1]
 
         # convert column from string to numeric
         categories[column] = categories[column].astype(int)
-    
+        
+    # drop the original categories column from `df`
     df = df.drop(['categories'], axis=1)
+
+    # concatenate the original dataframe with the new `categories` dataframe
     df = pd.concat([df, categories], axis=1)
+
+    # drop duplicates
     df.drop_duplicates(inplace=True)
     
     return df
 
 
 def save_data(df, database_filename):
+    """
+    Stores the data frame in a SQLite database
+    """
     engine = create_engine(f'sqlite:///{database_filename}')
     df.to_sql('project_2', engine, index=False) 
 
 
 def main():
+    """
+    Performs the functions defined in the script. 
+    """
     if len(sys.argv) == 4:
 
         messages_filepath, categories_filepath, database_filepath = sys.argv[1:]
